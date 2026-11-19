@@ -1,0 +1,890 @@
+session : creating EC2 instance:	
+Security Group: Controls all inbound and outbound traffic.	
+
+session 14 Creating a linux EC2 instance:		
+open CLI
+cd downloads
+ssh -i linuxKeypair.pem AMIName@publicIPAddress
+-------------------
+Amazon Machine Image (AMI):
+AMi is the pre-configured template of virtual machine env. in AWS.
+	it inlcudes, OS, application server, applications and other configurations needed to deploy the virtual env.
+USAGE of AMI:
+	1. rapid instance deployment on EC2
+	2. Load balancing and scaling 
+		(Scalling: if your instance got failed or down due to some reason- AMI will auto create similar instance.
+			in this case, we will create custom AMI and from their, we can create multiple instances)
+		(Balancing : Single server can have multiple instances, so AMI will manage equal balance on each server)
+	3. Environment clonning: Suppose we have an env, working nice having 25 different servers,
+		If we want to create same env, then creating them manually is difficult. So AMI helps creating a same env. on AWS.
+		How to create?
+		Create an env. create an AMI. from that AMI, create another instance.
+	IMP: AMI is region specific, 
+	4. Disaster recovery: If active env. gets stucked, stand on env will be resume with the help of AMI(AMI will replicate same active env. to stand on env)
+------------
+ENA: Elastic Network Adaptor : Provides high speed connectivity.
+------------
+Private IP and Public IP:
+Range of private IP:
+	A. 10.0.0.0 to 10.255.255.255
+	B. 172.16.0.0 to 172.31.255.255
+	C. 192.168.0.0 to 192.168.255.255
+	Private IP is compulsory there.
+	its free within its range.
+	No permission needed.
+	Not routable on internet.()
+	
+Public IP: it is chargeable, We can or cannot take public IP. its upto you.	
+			Permission needed from ISP(AWS)
+			Routable on internet ()
+
+Basion Host: Suppose we have 3 sevrers having private IP's and I want to access it from my office
+				So I will connect to one server using public IP. from that server, I will connect to rest 3 private servers.
+				So that sevrer which we have connected through public IP is called as Basion Host.
+
+** Use Case: I'm having 2 instance - 1 is with public and private IP addresses and 2nd is having only private IP> how can I connect to 2nd instance?
+Ans: 
+AMI - Windows server
+First connect to the instance 1 using public IP (which needs internet to connect)
+ Once you connected to 1st instance remotely --> from their, connect to 2nd instance using private IP (where internet is not required)			
+---------------
+AWS EC2 instance Type:
+ 1. d- dense-storage instance (d2)
+ 2. A- ARM Based Instace
+ 3. I- IOPS(input-output per second
+ 4. R - RAM
+ 5. T - Cheap General Purpose(t2.micro)
+ 6. M - Main Choice (For general purpose app)
+ 7. C- Compute(CPU)
+ 8. G - Graphics
+ 9. F - Field programmable Gateway, real time video process
+ 10. P - pics  general purpose CPU (Machine Learning)
+ 11. U - Bare metal
+ 12. X - for extreme high memory.
+ 13. Z - factor - Extreme memory and CPU
+ 14. Nitro  system based instance : If we really need a high speed performance instance, we will use NITRO based instance.
+		it by pass the hypervisor layer to directly access the Hardware(CPU, RAM, STORAGE, Network)  to create Virtual machine.
+-----------------------
+AWS multi AZ(Availability ZOne) : 
+in network setting ---> Subnet
+if we select No preference: then aws will create instance in whereever it is available.
+Best Practice to select Subnet:
+	Strategy:  mumbai region (ap-south-1)
+		AZ : 3 zones
+			ap-south-1a
+			ap-south-1b
+			ap-south-1c
+	Strategy: Create Domain control in 2 different AZ. So if one gets down, 2nd one will handle.
+				we have to create DC in each zone.
+DC: Domain Controller: Every company has multiple domain controller.
+if one domain controller gets down, another one will handle.
+------------
+What is EC2 Security Group?
+--> Use Case: 
+N/w protocol: TCP, UDP and ICMP(Internet Control Message protocol) are carrier protocol.
+Carrier protocol: Carry all traffic on internet from one computer to another.
+	Traffic: Web server: HTTP(80) or HTTPS(443)
+			email: SMTP(25) or Pop3(110)
+			file: SMB(445), NFS(2049)
+			DB: mySQL(3306), oracle(1521)
+			DNS: DNS(53)
+Important things to Do for Security Group:
+1. connect your security group to EC2 NIC (	Network interface Card) - compulsory
+2. when we create security group while creating EC2: Default rule is:
+	outbound rule has: All traffic allowed.
+	inbound traffic has: a) if AMI is Windows, then port range is 3389
+						 b) if AMI is Linux, then port range is 22
+3. When we create security group before creating EC2 instance, and attach it afterwords: Default Rule is:
+	outbound traffic has : All traffic
+	inbound traffic has: No rule (nothing is allowed)
+4. Default Security Group: Both inbound and outbound traffic is Allowed.
+		Default security group cant be deleted.
+		
+Important: What is Statefull Security Group:
+--->  Statfull Security allows inbound responses which are requested by its client server. Other than that, it will not allowed any traffic from outside.
+	example:client server has send request to destination IP: 2.2.2.2 and that IP is giving response, then it will be allowed by inbound rule though
+			it has "No traffic Rule"
+		This is due to stateful security group.
+
+-------------------
+Practical:
+create a SG.
+dont add inbound rule.
+create instance.
+use Amazon linux AMI.
+add existing security group.
+create a security key pair: (mykey-mumbai.pem)
+goto cmd:
+> cd downloads
+> ssh -i mykey-mumbai.pem ec2-user@123.21.25.14 (ipV4 public IP from instance created)
+> it will not be allowed, eventually gets timeout error.
+Go to SG, add inbound rule: ssh, anywhere, 0.0.0.0 > add rule
+> go to cmd again
+> ssh -i mykey-mumbai.pem ec2-user@123.21.25.14 (ipV4 public IP from instance created)
+> sudo -i (it will take you to root node)
+> yum install httpd
+> systemctl start httpd
+> systemctl status httpd
+> Then Copy the public IP from EC2 instance and paste in new tab.
+--------------------------------------
+What is User Data Script in AWS?
+---> Creating web Server:
+	>Manual method:Create EC2 instance and access with ssh.
+	>Pro Method: Automatic,--> When your EC2 instance gets ready, web server will be created automatically. (no need to do ssh from server)
+	
+Practical: Manual:
+1. AMI --> AWS linux (shellscript)
+		#!/bin/bash
+		> sudo -i
+		> yum install -y httpd
+		>systemctl start httpd
+		>systemctl enable httpd
+		> echo "<h1>Welcome to cloudfolks hub</h1>">/var/www/html/index.html
+Practical: Automatic:
+1. AMI --> AWS linux(powershell)
+		follow same steps.
+		just add below code in user data under Advance details section:		
+		#!/bin/bash
+		 sudo -i
+		 yum install -y httpd
+		 systemctl start httpd
+		 systemctl enable httpd
+		 echo "<h1>Welcome to cloudfolks hub</h1>">/var/www/html/index.html
+----------------------
+AWS EC2 Termination Protection: Day 25
+	select ec2 instance.
+	click on Action
+	click on instance setting--> enable/disable termination protection
+	Same setting for stop instance.
+-------------------------
+EC2 instance Placement Group: day 26
+	create EC2 instance:
+		under Advance details:
+			we finde Placement Group.
+	3 Placement Strategy:
+		Cluster
+		Spread
+		Partition:
+Main Motive of Placment Group: It enables you to influence how your instances are placed on the underlying hardware.  		
+	
+	 Clustered Strategy: If we want High Speed between 2 instances:
+	 Suppose: we have a AZ ap-south-1	
+		     in this AZ: we have 3 racks: rack1, rack2, rack3:
+			 you have 6 EC2 instances in rack 2.
+			 Every rack has common hardware in it: like networking H/w 
+			 So, 2 same EC2 instances are under same rack, there will be  high speed.
+				There will be no another h/w interference.
+				
+	Spread Strategy: If we want high Availability:
+			Suppose, we have 2 AZ:
+						ap-south-1A and ap-south-1B
+						Each AZ contains multiple racks.
+						Each rack contains different instance.
+			So, if one instance got failed, then other instance will be available. 
+				here, spread strategy achieve its goal of High Availability.
+	Limitations: in single AZ, we can have maximum 7 EC2 instances.			
+				
+	Partition Strategy: to achieve High speed and High Availability:
+			Suppose, we have a AZ - ap-south-1
+			in that zone we have 4 racks - rack1, rack2, rack3 and rack4
+				So, here partition will be done for rack1 and rack2 - partition 1 - shares hardware 1
+													rack3 and rack4 - partiiton 2 - shares hardware 2
+				Meaning, each partition contains 2 racks and both will share same H/W								
+			This will achieve the goal of high availability and high speed both.
+			
+	Limitations while creating Placement Group:
+		1. name should be unique
+		2. You cant merge placement groups.
+		3. One EC2 instance can be placed in only one placement group at a time. it can not be span in multiple placement groups.
+		4. You can not launch dedicated host in placement group.
+------------
+Tenancy: day 27
+	Def:	It determines how your physical hardware on which your instance run is shared with other AWS accounts.	
+	
+	1. Shared (Default)
+		Physical host(h/w) managed by AWS.	
+			Having 3 different instances(customer) like customerA, customerB, customerC.
+			Physical host can run or share all 3 customers with other.
+			This is normal/default behaviour of tenancy while creating EC2 instance.
+	2. Dedicated instance:
+		Physical host(h/w) managed by AWS.
+			if host is having 3 customers, custA, cust A, Cust B.
+			Customer other than its own should not be allowed here. like cust B is not allowed. only cust A is allowed.
+			Due to government compliance, some companies use this dedicated instance tenancy.
+	3. Dedicated Host:
+		Some companies are having thier own dedicated host.
+			They only allow dedicated instances.
+	Q. How to create Dedicated host?
+		-->EC2 dashboard --> Dedicated host--> multiple options.
+------------------------------------------
+EC2 instance Purchase Options: day 28
+	1. On-Demand - No saving
+	2. Spot - 90% saving
+	3. Reserved(Standard) - 72 % saving - 1 to 3 yrs
+	4. Reserved(Convertible) - 72% saving - 1 to 3 years
+	5. Reserved(Scheduled) - 72 % saving - 1 year 
+	6. Saving Plans(EC2) - 72% saving - 1 to 3 years
+	7. Saving Plans(Compute) - 66% saving - 1to 3 years
+-----------------------
+Elastic IP in AWS: day 32
+		it is a public IP but we have to pay seperately for this IP unlike your normal public IP. 
+		Unlike public IP(which we get while creating EC2 instance), it is static throughout the instance.
+	Benifit:
+			If we get elastic IP, it will remain same though you stop or restart your instance unlike public IP.(keeps changing on stop and start instance)
+-----------------------------
+introduction of Data STORAGE in EC2 instance: day33
+		 Category of Storage:
+			1. DAS(Direct attach Storage) - also called Block storage - example: Hard disk or SSD to your laptop. fast storage.
+				types in AWS DAS :
+					1. instance storage: comes with creation of EC2 instance by default.
+					2. EBS(Elastic Block Storage) : Need to create seperately and attach it with ec2 instance.
+			
+			2. File Storage - 
+				types:
+					1. NFS - for Linux - Network File Syestem
+						Alternative - EFS (Elastic File System)
+					2. CIFS 0 for windows - (Common Internet File System) or SMB (Server message Block)
+						Alternative - FSX
+			3. Object Storage - also called cloud storage - 
+				S3 (Simple Storage Service)
+-----------
+	DAS(Direct Attach Storage):
+		1. instance Storage: Connected with particular/specific single Physical Host. if we switch off the instance and again switch ON the instance,
+			instance will be appear on another physical host and their, storage will not be the same as it was earlier. it is non persistant storage.
+		2. EBS(Elastic Block Storage):
+			it is kind of external storage. it is connected to both physical Hosts.
+			if we switch off the instance and again switch on, even though it will open with 2nd physical host, the EBS storage will remain the same.
+----------------------------------
+Difference between instance storage and EBS storage:	day 35		
+	1. instance storage is temporary(non-persistant) where as EBS is persistent.
+	2. Data will be lost if instance stopped in instance storage, where as data is safe even if instance is stopped.
+	3. Auto-mount with EC2 instance, where as EBS must be attach and mounted with EC2.
+	4. Size limit depends on instance type, where as EBS size is upto 16 TB
+----------------------------------------
+Difference between IOPS and Throughput:
+	IOPS: Counts no. of requests
+	Throughput: counts no. of bytes in request.
+---------------------
+AWS snapshot : day 40
+Snapshot: is the 100% backup of EBS volume.
+Steps to create snapshot:
+	1. create ec2 instance.
+	2. connect to the server.
+	3. create volume.
+	4. attach volume to the server.
+	5. Open connected server machine.
+	6. go to server manager.
+	7. go to computer management.
+	8. click on disk management.
+	9. online the volume by right click.
+	10. click on new simple volume/format.
+	11. add some files inside new volume.
+	12. Go to volume--> select the volume for which we have to create snapshot.
+	13. create snapshot
+	14. select volume ID
+	15. Go to snapshot--> Your snapshot will be created.
+	16. go to server--> Delete all files from data volume.
+	17. goto snapshot--> select snapshot--> create volume from snapshot.
+	18. goto volume-->You will see new volume created which is snapshot volume.
+	19. attach newly added volume to the server from Action.
+	20. goto server machine--> Disk management--> Again right click and online.
+	21. Open the volume. you will find your data in new volume.
+-----------------------------
+Use Case of snapshot: A. Backup ( Stored in Amazon Simple Storage Service S3)
+Statement of use case: We have to use volume 1 of instance1 in instance 2 using snapshot feature.
+		  1. Create two different instances (ap-south-1A and ap-south-1B		
+		  2. Connect both instance to server.
+		  3. create volume1 for ap-south-a1
+		  4. goto console of ap-south-a1. format the volume and add some data in it.
+		  4. delete instance 1 (ap-south-1A). volume 1 remain the same.
+		  5. Now volume1 from ap-south-1a we have to use it in instance2(ap-south-1b)
+		  6. We have to use volume 1 of instance1 in instance 2 using snapshot feature.
+-----------------
+Use Case B. To make Data volume Encrypted. - snapshot is used.
+			If we have created a volume without encrption.
+			create snapshot of that volume. 
+			Then select create volume from snapshot. tick to Encrypted volume checkbox. your volume will be encrypted.
+--------------------
+Use Case C:  If we want to copy Data volume from one region to another region.
+				1. create volume in first region (ap-mumbai)
+				2. create a snapshot of that volume.
+				3. click to snapshot option. select snapshot volume.
+				4. copy that volume and select 2nd region where we have to copy that volume.
+-----------------------------
+Fast snapshot restore :
+Select snapshot--> Action--> snapshot setting--> Manage Fast snapshot Restore	
+------------
+Automat EBS Snapshots with Amazon Data Lifecycle Manager(DLM): day 43
+Option on dashboard: Lifecycle Manager:
+Steps:
+	Go to volums-->tags--> Add tags--> Enter key, Enter Value-->Add-->Save
+	goto Lifecycle Manager--> select EBS snapshot policy--> Volume--> Enter key, enter value-->Add.
+---------------------------
+
+What is EFS: Elastic File System: Kind of Shared Storage device fo only Linux base storage: day 44
+	Why not EBS volume? --> EBS voulme is dedicated for that particular EC2 instance. Can not be share.
+	Why EFS? --> We can share EFS with multiple EC2 instances. it is like centralize storage.
+	Limitations: As EFS is alternative of NFS(Network File System), EC2 instances should be Linux.
+	Advantages: We dont need to take backup from each instance. 
+				We dont need to have a website compulsory, your multiple data will also be stored in EFS.
+	1)Throughput Mode: How much data your storage can handle/Access per second.
+		Types:
+				Enhanced: How you need data, in that way we will get an throughput.
+						Elastic:
+						Provisioned:		
+				Bursting: More the data stored, more is the throughout.
+	2)Performance Mode: how much data request you can do per second.
+	
+	Scenario: EC1 instance in ap-south-1a - web server 1
+			  EC2 instance 2 in ap-south-1b - web server 2
+			  Both website hosted in shared Storage - Amazon EFS
+Practical:
+	1. Create Security group : Web-server SG				  
+					inbound rule: HTTP and SSH
+					outbound rule: all traffic
+	2. Create another security Group: EFS-SG
+			inbound rule: Allow  NFS(2049) and allow traffic from  Web-server-SG
+			outbound rule: All traffic
+	3. Create EC2 instance(Web server 1_ in ap-south-1A (AMi- Amazon linux), SG-> webserver-SG
+	4. Create EC2 instance in (Web server 2) ap-south-1B (AMI - Amazon linux) Sg-> Web-server-SG
+	5. Goto EFS tab --> Create File system--> use default VPC for now.
+	6. Connect to the server of both instances.
+	7. Configure both web server in both server.
+		sudo -i
+		yum install httpd
+		systemctl start httpd
+		systemctl status httpd
+	8. Add utility to the webserver:
+			yum install amazon-efs-utils
+	9. 	/var/www/html/  --> this is path where index.html file is stored in every webserver code.
+		We have to mount EFS with our webserver.
+	10. goto EFS--> Click on mount--> Copy the command under "Using EFS mount helper".
+		put it on cmd followed by /var/www/html/      --> mount with common EFS is sucess.
+		sudo mount -t efs -o tls fs-07a0eb5942ceac01b:/ /var/www/html/  
+		cd /var/www/html/    --> to verify its connected susscfully.
+		vi index.html   (put a html code and save. any of one server we can put a code and it will reflect in both servers)
+		:wq
+	11. goto instance1 --> copy public Ip and paste in new window.
+	12. do the same for instance2.
+13. If you want to update the website. goto any of the server--> vi index.html-->make changes--> :wq -->run the public IP		
+-------------------------
+
+What is FSX in AWS? : day 47
+	: Fully Managed file storage service by AWS.
+	  It is not dedicated for any particular server. we get multiple options in FSX storage.	
+	  Launch and run feature - which is rich and highly optimized third-partyfile system.
+	  You can access FSX file system from: multiple EC2 instance
+										   Amazon ECS(Elastic Container Service)-Container management system of AWS
+										   EKS(Elastic Kubernetes service)-Container management service (Kubernetes is open sourc
+										   on-primises infrastructure
+	  The service is designed to support various workloads: Fsx for NetApp ONTAP(storage company from cisco)
+															Fsx for OpenZFS
+															Fsx for windows file server
+															Fsx for Lustre
+	: Advantages of FSX:
+						Fully Managed
+						Scalable(min 1 Tb to petaByte)
+						Performance(lustre)
+						Secure
+						Cost-Effective(coz- fully managed service)
+						pay-as-we-go
+	: Use Case: Lift and shift of windows-based application.
+				File sharing and collaboration
+				High performance Computing(HPC) workloads
+				backup and disaster recovery
+---------------------
+NetAPP: day 48: Multinational company known for Data Management Solutions:
+	    Particularly known for NAS(Network Attached Storage)
+	NetAPP Provides these Data Management Services: Data STORAGE
+													Data protection
+													Data Management
+													Data Sharing
+----------
+ONTAP: Operating system for Data Management.
+		Designed to suit different deployment methods and business needs.
+--------------
+
+VPC : Virtual Private Cloud : Day 57
+			( How AWS isolate resources/ keep resources secure.)
+Example: 
+		Region: ap-south-1 (mumbai)
+		AZ: ap-south-1A and ap-south-1B
+		in each AZ: There are thousand of physical hosts.
+		Two users in AWS: rahul and Modi
+		Create an EC2 instance in ap-south-1A under same physical host. (Physical host is managed by AWS)
+		Can Rahuls's ec2 instance and modiji's ec2 communicate with each other?
+			Ans is NO.
+			Reason: Though both instances are created under same physical host and same AZ, There VPC is different
+					VPC will isolate there resources seperately.
+					Though instances are created under same AZ and same physical host, there VPC are different.
+---------------------
+How to create VPC in AWS: day 58
+1. Create VPC:
+			Key Points:
+				1. we can delete default VPC. but cannot create ec2 instance thereafter. we need min 1 VPC to create ec2 instance.
+				2. We can create default vpc again. From action menu.
+				3. we can use both public and private IP address. generally we use private IP while creating VPC.
+											
+2. IP Address:
+				Private IP address series:
+						Class A: 10.0.0.0 - 10.255.255.255
+							CIDR mask: /8
+						Class B: 172.16.0.0 - 172.31.255.255
+							CIDR mask: /16
+						Class C: 192.168.0.0 - 192.168.255.255
+							CIDR mask: /24  (Classless Inter-Domain Routing)
+
+3. Subnet: 	it is segmented portion of VPC's IP address range. allowing organized allocation of IP addresses.
+			EC2 instance is created under subnet. so subnet is imp while creating ec2 instance.
+				Subnet is alwys created inside AZ.
+				Same subnet cannot be used in multiple AZ.(ap-south-1A,1B and 1C)
+				multiple subnet can be created inside one AZ.(ap-south-1A can have 2 subnets)
+			    200 subnets/VPC is default range.
+			Two ways to create Subnet:
+	        1st Way:
+				create VPC:
+				give ipV4 CIDR range as: 192.168.0.0/24
+				create VPC.
+				goto subnet--> create subnet-->select vpc--> select ipv4 CIDR as 192.168.0.0/24
+				select AZ: ap-south-1a-->create subnet1----> Subnet1 created successfully
+				goto VPC--> Action--> Edit CIDR setting.
+				Add another ipV4 CIDR range as: 192.168.1.0/24  (maximum 5 range wwe can add)
+				goto subnet--> Create subnet--> select vpc--> select ipV4 CIDR as 192.168.1.0/24
+				select AZ: ap-south-1B--->create subnet2---> subnet2 created successfully.
+			2nd way:
+				USe Subnet Calculator:
+				Divide one subnet let say: 192.168.0.0/24 into 2 parts (1 subnet can have 126 addresses)
+IMP: Each subnet provides you 126 address, After creating the subnet it shows 123 address, why?
+	 Ans: 1st Ip is a gateway IP.router IP Reserved
+		  2nd IP is for DNS reserved.
+		  3rd IP is for future requirment or R&D resered.
+			Thats why 126-3 = 123 shows in addresses.		
+		Steps to create subnet: 
+			Region: ap-south-1
+			AZ: ap-south-1A
+		1. create VPC. (private IP: 192.168.0.0/24)
+		2. Create subnet. (subnet 1)
+		3. Create ec2 instance 1.
+			add subnet 1 to it
+	Problem: We have to create another instance in ap-south-1B AZ but we can use subnet1 only once.
+	Solution:
+		goto vpc:
+			add another range of network (CIDR) (192.168.1.0/24)
+			create subnet2 with 2nd IP.
+		4.goto ec2 instance.
+		5. select AZ as ap-south-1B from subnet.
+
+4. Int Gateway: Bridge VPC to Internet
+		When we create EC2 instance, from where internet comes in?
+		Ans: Create Internet gateway.
+			 Remember, internet gateway always connects/attach with VPC. (not with subnet)
+			 Attach IG with VPC.
+			 But it will not solve your problem.
+			 We have to connect IG with Route Table.		
+		
+5. Route table: it Directs VPC network Traffic 
+		default limit is 200 route tables/VPC
+		Routes per route table: 50
+		When we create subnets, AWS automatically create Route Table which is called "Main Route table".
+		It is basically a router that connects your subnets.
+		Goto to the route table ID:
+		Click on edit routes.
+		Allow all Destination: 0.0.0.0
+		Target: select Internet Gateway--> Your IG name.
+		Add
+		Now we can access EC2 instance server using internet
+------
+Q: Can one instance communicate with another instance in this situation?
+	Ans: Yes, How?
+		Using public IP (common) but also using private IP's as well.(recommended)
+		from server1: > ping <ip of another server>
+		but this will not help to connect. as we have security groups for both servers.
+		goto to inbound rule: add rule--> Allow all ICMP ipv4 traffic.
+		Now goto to server cmd.
+		ping private IP
+Q: What is bandwidth of Internet Gateway?
+	Ans: Unlimited.
+	There is no bill for inbound rule in AWS, they charge for only outbound usage of Internet gateway.	
+-------------------
+Create AWS public Subnet and Private Subnet: day 61	
+	AWS VPC 2 tier Architecture:
+		Tier 1 (public subnet): web / application tier. Resources here are reachable from the internet.
+		Tier 2 (private subnet): database tier. Resources here have no direct internet access.
+	Qu.	Why split it this way?
+			Your database should never be exposed to the internet. Users talk only to the web tier, 
+			and only the web tier talks to the database.
+			If the web server is attacked, the database is still protected by network boundaries.
+Steps to create Public and Private Subnets:
+	1. Create VPC
+	2. goto subnets. click on create subnets	
+	3. select vpc--> subnet name(public subnet-1)--> select AZ-->ap-south-1A
+	4. Do the rest with the same. public-subnet-2 --> AZ--> ap-south-1B
+	5. private-subnet-1 -->AZ--> ap-south-1A
+	6. private-subnet-2 --> AZ-->ap-south-1B
+	Once subnets created. Main route(main-RT) table will be created who is associated with all 4 subnets.
+	7. create Internet gateway. attach it with VPC.
+	8. Create another route table. (public-RT)
+	9. Associate only public-subnet-1 and public-subnet-2 with it.
+	10. automatically those 2 subnets will be deassociated from main route Table.
+	11. goto public-RT--> Routes--> edit routes--> add route--> add Internet Gateway--> save
+	12. Those subnets who is having Internet gateway will appear as public subnets.
+	13. those who dont have IG, will remain the private subnets.
+-----------------------
+How to access Private instance using bastion: day 63
+	EC2 instance with IG and public IP, we can access it easily. but what about private instances?(database)
+		for private instance(db servers) we have VPC endpoints feature in AWS.
+		Multiple private instances can be connected using single endpoint.
+	Disadvantage:
+		When we use endpoints, it actaully uses aws API. that will ask for aws username and password.
+		So everytime we have to create aws account.
+Another way to connect to private EC2 instance: using Bastion Host.
+	goto cmd--> goto file where .pem file is stored
+		> cd downloads
+		> scp -i myKey-mumbai.pem myKey-mumbai.pem ec2-user@IP of bastionHost(public instance):/pwd of bastionHost
+		> scp -i myKey-mumbai.pem myKey-mumbai.pem ec2-user@13.207.185.105:/home/ec2-user
+	Goto bastionHost server: make sure bastionHost instance is connected.		
+		>chmode 400 myKey-mumbai.pem
+		> ssh -i myKey-mumbai.pem ec2-user@IP(privateInstance)
+		> ssh -i myKey-mumbai.pem ec2-user@192.168.0.155
+		> private ec2 instance will be connected successfully via webServer (bationHost) i.e. public server
+----------------------
+NAT gateway setup in your VPC: day 64
+	Def: Enables instance in private subnet to access intenret for updates and downloads.
+	NAT Gateway: supports upto 55,000 simultaneous connections.
+	Bandwidth: 45GBPS depending upon instance type.
+	How to install, update things in private server if they dont allow internet gateway?
+	Ans: using NAT gateway, we will provide only outbound Internet access to private servers. no inbound access.	
+	NAT Gateway(Network Address Translator):
+STEPS:
+	goto NAT gateway-->create NAT--> select VPC--ConnectivityType as Public
+	goto route Table--> Main Route(where private subnets are associated)--> edit route
+	add NAT gateway route.
+	goto bastion host---> ping google.com
+-------------------------------------
+VPC Peering: day 65
+		1. instance from same region can communicate with each other?
+		Ans: No
+		2. instance from different region can communicate with each other?
+		Ans: No
+		3. instance from same AZ can communicate with each other?
+		Ans: No
+		4. instance from different AZ can communicate with each other?
+		Ans: No
+Then How can we connect them? 
+--> Using VPC peering Service.
+
+STEPS:
+1.	take a region ap-south-1
+	create VPC. Ind-VPC
+	create subnet. ( disable public IP)
+	create EC2 instance
+	Create vpc endpoint to connect with instance.
+2.  take a region US-east-1
+	create VPC
+	create subnet  (disable public IP)
+	create ec2 instance.	
+3. from ind region:
+			ping IP of US instance.
+			it will not allow.
+4. Go to ind region--> VPC--> peering connection--> create connection.
+   fill all details:
+5. Goto US region --> VPC--> peering connection--> Accept the request from Action tab.
+6. Even this will not allow ind instance to ping to the US instance.
+7. Last step: goto india VPC--> Route table--> edit route table--> destination-->VPC IP(CIDR) of US region VPC-->Target--> peering connection-->Save
+8. goto US VPC--> route table-->edit route table--> Destination --> VPC IP(CIDR) of Ind VPC-->target--> peering connection--> Save 
+9. goto US-east-1 instance--> security-->edit inbound rule--> add rule--> Type: All ICMP ipv4-->All traffic--> Save changes
+10. goto ap-south-1 server --> ping private Ip of us-east-1  
+ ICMP: Internet Control Message Protocol: it is network's "Status messaging"
+	   It has no port number. it sits alongside other ports and checks the existance and control of network and dignostics.	
+	   When something goes wrong, it will send message like:
+			1. echo request/echo reply(type 8 or type 0)
+			2. Destination unreachable: (type 3)
+			3. time exceeded (type11)
+			4. Redirect(type 5)
+----------------------------
+Network Access Control List (NACL): day 67
+	It is used to protect whole subnet.
+STEPS:
+   1. create VPC
+   2. create 2 instance in same AZ
+   3. Run both server: it should run as ACL rule is All traffic allowed
+   4. goto ACL--> create ACL-->edit associate-->add your subnet--> Save
+		Now your server will not work as we have added subnet to newly create ACL service.
+	5. goto inbound rule--> edit--> add new rule--> rule no 100, type: All ICMP ipV4--> save
+	6. goto outbound rule--> edit--> add new rule--> rule no: 200, type All traffic--> save
+	7. Try ping server1IP
+	8. try ping server2IP
+	9. Allow all traffic rule from inbound rule: SSH, HTTP --> Save
+	--------------
+Difference between Security Group and Network Access Control List (NACL):
+		1. SG is dedicated for particular ec2 instance. NACL is applicable for whole Subnets.
+		2. in SG, we cannot deny the rule. in NACL, we can deny specific IP if needed.
+		3. SG is Statefull whereas NACL is Stateless.
+			Statefull: Outbound rule: Must Allow
+					   Inbound rule: No Rule Needed.	
+			Stateless: Outbound rule: Must allow
+					   Inbound rule: Must allow	
+-------------------
+Site to Site VPN in AWS: 
+	It creates encrypted IPSec tunnel in bewteen your on-premises network(office or data centre) and AWS VPCs over public internet
+    So the two netweokr can talk to each other privetly as if they ar eon same network.
+USE CASE: Connecting company office or on-premises DB to workloads running on AWS. during hybrid cloud setupr or migration.
+	
+	Virtual private Gateway: AWS-side endpoint attached to your VPC's.
+    Customer Gateway: A resource in AWS that represent your on-premises router(its public IP and config.)	
+-----------------
+Direct AWS Connect: day 72 : Fibre optic connect
+	Dont need intrnet connections.
+	it is bascially creating 1 instance in 2 different regions for backups.
+Advantage:
+			Reduce bandwidth cost ( upto 300gbps speed)
+			Consistent network performance
+			Compatible with all AWS services.
+			Private connectivity to AWS VPC
+			Elastic and simple.
+			Does not encrypt traffic in between VPC and on-premices network.			
+--------------			
+AWS Transit Gateway: day 73
+	It is a network transit hub that can be used to interconnect with VPC's and with on-premises network.
+    it can connect:	
+					1. one or more VPC's
+					2. one or more VPN connections
+					3. one or more AWS direct connect.
+					4. one or more transit gateway peering connection.
+	its like a centralize system, from single Transit gateway, we can connect to multiple VPC's and their peering connections,
+	AWS site-to-site vpns, AWS direct connects. 
+Example: If we have 4 VPC and we need to connect with each other:
+			We have to create 6 different peering connections.
+			So, Transit gateway will resolve this issue:
+				Create single transit gateway and peer all VPCs with it.
+	
+PRACTICAL:
+  1. take a region. create 4 different VPC with different range of CIDR for each vpc.
+  2. create 4 private subnets for each vpc. can select any AZ for each subnet or same AZ is also OK.  
+  3. create 4 private EC2 instances using each Subnet and VPC.
+  4. Connect instance-1 with the Server using ec2 instance connect endpoint.
+  5. for step 4 we have to create endpoints for ec2 instance 1. create it.
+  6. From server 1 , try ping the other 3 instances. it will not ping as their is no connectivity between VPCs.
+  7. goto transit gatway option(VPC)-->Create AWS Transit Gateway. Dont change existing settings.
+  8. goto transit gateway Attachment--> create 4 attachments (as we have 4 vpc)
+  9. Create transit gateway attachment for all 4 vpc
+ 10. goto route table-->4 route table will be there.
+11. take VPC-1 route table--> Route-->Edit route--> Add all CIDR of remaining 3 vpcs and Save changes.
+12. Take vpc -2 route table--> add remaining 3 vpc CIDR to route and save.
+13. take vpc-3 route table--> add remaining 3 vpc CIDr to route and save.
+14. take vpc-4 route table--> add remaining 3 vpc CIDR to route and save.
+15. Make sure all inbound traffic should be allowed in all 4 instances. allow them from security group of each instance.
+16. give the ping from instance 1 server. thats it.
+----------------------------
+What is VPC endpoint: Day 75
+	VPC endpoint enables privetly connects to VPC to supoort AWS services. 
+Example: we have 2 services in AWS:
+		1. EC2 instance
+		2. Amazon DynamoDB (Non-relational db. it can be S3 also)
+		3. If I have to acces DynamoDB from EC2 instance- it actually accessed through/over internet.
+			to access Db, we go outof aws services using internet Gateway to Internet and then access DB.
+		4. there is 2 problems of this:
+			1. bandwidth and 2nd is as it goes on internet, its publically accessible.
+		5. to overcome this issue: we have vpc endpoint.
+		6. it uses PrivateLink to connect with VPC, AWS services, and on-premises application.
+		7. PrivateLink: Simlifies the security of data shared with cloud based application by eliminating exposure of data on public internet.
+			privateLinks allows:
+				to connect to different accounts, VPC's in different regions as well.
+	Type of endpoints:
+		1. gateway endpoint: we have to make entry in route table for this service
+		                    1. S3
+							 2. DynamoDB
+		2. Interface Endpoint: elastic network service with elastic private IP.
+								No need to make entry in Route table.
+		3. Gateway Load balancer Service:						
+------------------
+VPC privateLink and endpoint services: day 76
+	If your service provider and client both are in same AWS region then we dont need internet to access.
+	Instead we can use privateLink. privateLink is a enpoint service.
+	AWS privateLink and VPC peering difference:
+	in privateLink --> we can access only specific port/app when connected to service provider app.
+	in peering --> we can access all AWS services once connected to VPC.
+VPC endpoint service is like doorway to connect to certain online services in a secure and private way instead of going through public network.
+Enpoint service require either gateway load balanacer or Network Load balancer.
+Traffic is allowed on TCP port only in endpoint services.
+Endpoint service is accessible from the region where you have created it.
+To access it from other region we need peering.
+------------------------------
+AWS DHCP option Sets: day 77
+DHCP: Dynamic Host Configuration protocol:
+Basic COncept: When we pass on internet to the router, it uses DHCP IP.
+when user wants to connect with router or WIFI, we dont enter IP address, instead we use password of that router. 
+So putting DHCP IP manually will lead to overlapping of same ID by different users, so DHCP creates it automatically when
+configuring the router and internet.
+When we create instance, we get host IP, private IP, which is automatically assigned by DHCP services.
+---------
+DNS server: When user enters the website name, DNS will convert it into IP address.
+--------------
+AWS VPC flow logs:
+	used to maintain the records of all incoming and outgoing traffic.
+	we can store logs flow at cloudWatch or at S3 bucket.
+Steps to create:
+		Take a defualt VPC.
+		create S3 bucket.
+		from VPC--> Action--> create flow log--> Namethe log flow
+---------------------
+What is Customer Managed prefix List: its a set of one or more CIDR blocks: day 79 
+	When we have to allow 3 different ports on 3 different SG using same CIDR range. we use custom prefix list
+	To define CIDR range in multiple Security groups, we use custom prefix list service.
+example: instead of adding single single range in rules, we can add prefix list and it will be applicable for multiple SG's.
+we can refer prefix list with:
+								. VPC SG
+								. Subnet route table
+								. Transit gateway route table
+								. AWS network firewall rule group
+								. Amazon managed Graphana network access control
+Types of prefix List:
+					1. Customer managed prefix list
+					2. Aws managed prefix list.
+--------------
+What is AWS managed prefix list: day 80
+    We can not create, delete, modify aws prefix list.
+    AWS prefix list is mostly used in outbound rule.
+------------------
+What is AWS route 53: day 81
+	route 53 is DNS service which resolve Name to IP
+    internet works completely on TCP IP.
+	DNS works on TCP and UDP port 53, so called as Route 53.
+DNS basic:
+		https://learn.bhaveshatara.live : it is called as FQD (Fully Qualified Domain name). max: 255 chars
+		.live: can be .in, .com, .org : it is called as TLD (Top Level Domain)
+		1. DNS roote server : 13 servers world wide.
+		2. TLD Server: 	
+		3. DNS authoritative server: uses route 53			
+-------------
+SOA: Start of Authority
+	A Type record: Give a name--> you will get IP (IPV4)
+	AAAA type record--> give a name---> you will get IP. (IPV6)
+	CNAME--> route traffic to some another domain name and some AWS resource
+	MX---> specifies mail server.
+-----------------
+How load balancer works; day 93
+		keep load balanacer in public server.
+		keep ec2 instance in private server.
+EC2--> Load Balancer-->
+			Application Load balancer
+			Network Load Balancer--
+			Gateway Load Balancer--		
+			Classic Load Balancer--
+	Scheme:
+		Internet-Facing--> Load balancer is accessible from internet
+		Internal--> 
+--------------
+AWS Load Balancer: day 92
+	It basically balance the traffic coming from users to EC2 instances.
+	We can keep EC2 instances in private subnet.
+	    create a load balancer. we will get a link
+		User will send traffic to load balancer and load balancer will decide where to turn the traffic.
+		Suppose ec2 instance 1 is down, then load balancer will move traffic to ec2 instance and vice versa.
+------------------------
+Steps to implement Load Balancer: 
+A. VPC Setup:
+   1. Create VPC (If we have default vpc-its OK)
+   2. Create 2  public and 2 private subnet in 2 different AZ.
+			public_subnet_1A
+			public_subnet_2B
+			private_subnet_1A
+			private_subnet_2B
+   3.  Create 2nd route table for public Subnet.
+   4.  Add public subnets to it.
+   5. Create Internet Gateway and attach it with VPC.
+   6. Goto route table--> edit route table--> add IG to the public subnet--> Save
+   7. Create NAT gateway in public subnet.
+   8. Goto Main Route table--> edit route--> add NAT gateway to private subnet--> save
+-------------------
+B. EC2 instance and Security group Setup:
+	1. goto EC2 instance--> Create SG for ALB-SG--> inbound rule--> HTTP-->port 80--> from 0.0.0.0--> Save
+	2. Create anothe SG for web-SG(private ec2 instances)-> this SG will only allowed requests coming from ALB-SG(TCP port 80)
+	3. Create private EC2 instance (private subnet 1A and private subnet 2B)
+	4. Put a user data script while creating both instances.
+	5. verify both instances after creation.	
+-----------------
+C. ALB Setup:
+   1. Goto Load balancer--> create load balancer--> Create Application Load balancer.
+   2. Select Instances
+   3. Select VPC.--> IPV4--> Select public subnets.(public subnet 1A and public subnet 2B)
+   4. Select Security group
+   5. Listener--> select HTTP and  port 80
+   6.  Create Target Group.
+      6.1 target -->  set both private EC2 instances as a target group.
+   7. click nect--> Select Both instances
+	8. select target.
+	9. create Load balancer. 
+	10. copy DNS url and paste in new tab.
+-------------------
+AWS Application load balancer Policy:
+	1. Path based load balancer: works within a domain.
+Steps:
+	 1. create a VPC. attach it
+	 2. Create 2 public subnets. ap-south 1A and ap-south-2B
+	 3. Create 1 private subnet - ap-south 1A
+	 4. create a RT- for public subnet--seperate public subnets from main RT.
+	 5. create Internet gateway--attach it with VPC--attach IG with public RT Rule.
+	 6. create NAT gateway--> attach it with private subnet(main RT) Rule.
+	 7. create 2 different SG for ALB and web SG
+	 8. create 3 EC2 instances in private subnet. cloudfolks, aws, azure.
+	 9. create 3 target groups for cloudfolks, aws, azure.
+	 10. create load balancer.
+	 11. associate load balancer with cloudfolks target.(base target)
+	 12. copy DNS from load balancer--. open it in new tab.--> your root script will run.
+	 13. if we want aws page to be open:
+			goto load balancer--> select LB--> listener and rule--> add Rule-->/aws*--> target to --> select AWS target. save rule.
+			copy DNs followed by /aws
+	 14. if we want azure page to be open:
+			goto load balancer--> select LB--> listener and rule--> add Rule-->/azure*--> target to --> select Azure target. save rule.
+			copy DNs followed by /azure--> open in new tab.
+			
+	 Optional Steps: If you want your named website:
+	 13. goto route 53.
+	 14. goto Hosted Zone-->select hosted zone-->create record--> give a subdomain name for aws.
+	 15. enable alias--. fill details.--> click on create records.
+	 16. copy the url--> open in new tab.
+	 17. Same steps for azure as well.
+
+2. Host based load balancer: works in multiple region.
+		Same process as path based load balancer.
+		just instead of path, we have to put Host condition while creating load balancer.
+---------------------------------------------------
+Network Load Balancer: day 100
+	Best for TCP traffic where extreme performance is required.
+	Operating at connection level (layer 4) (application LB works on level 7)
+	Capable of handling millions of requests per second while maintaining ultra low latency.
+
+Difference in application BL and Network BL:
+1. Supported protocol:
+				Application LB: HTTP, HTTPS, gRPC
+				Network LB: TCP, UDP, TLS
+2. load Balancer type:
+			physical layer
+			Data link layer
+			Network layer
+			Transport layer
+			Session layer
+			presentation Layer
+			Application layer --> Application LB comes in picture.
+	Network Balancer LB:
+			physical layer
+			Data link layer
+			Network layer
+			Transport layer --> Network  LB comes in picture.
+3. idle Connection time out :
+				Application LB : Yes
+				Network LB: No
+4. Cookies: 
+		Application LB: Yes
+		Network LB: yes
+5. Path based routing and Host based routing:
+			Application LB: Yes
+			Network LB: No
+6. WebSocket Support: 
+		Application LB: Yes (two way communication between users and server)
+		Network LB: yes
+7. Static IP Suported:
+			Application LB: No
+			Network LB: Yes
+-----------------
